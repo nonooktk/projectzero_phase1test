@@ -4,7 +4,7 @@ DataSource（Supabase or JSON）から nodes／edges を取得してメモリ上
 """
 from __future__ import annotations
 
-import networkx as nx
+from typing import Any
 
 from src.adapters.interim.data_source import DataSource
 from src.domain.schemas import ContextBundle, GraphEdge, GraphNode, SearchHit
@@ -13,11 +13,14 @@ from src.domain.schemas import ContextBundle, GraphEdge, GraphNode, SearchHit
 class NetworkXAdapter:
     def __init__(self, data_source: DataSource) -> None:
         self._data_source = data_source
-        self._g: nx.Graph | None = None
+        self._g: Any = None
 
-    def _ensure_graph(self) -> nx.Graph:
+    def _ensure_graph(self) -> Any:
         if self._g is not None:
             return self._g
+
+        # 遅延 import で起動コストを抑制。
+        import networkx as nx
 
         g = nx.Graph()
         for node in self._data_source.load_graph_nodes():
@@ -95,6 +98,8 @@ class NetworkXAdapter:
     def subgraph(
         self, seed_ids: list[str], depth: int = 1
     ) -> tuple[list[GraphNode], list[GraphEdge]]:
+        import networkx as nx  # 遅延 import（_ensure_graph 経由でも import 済みのはず）
+
         g = self._ensure_graph()
         keep: set[str] = set()
         for sid in seed_ids:

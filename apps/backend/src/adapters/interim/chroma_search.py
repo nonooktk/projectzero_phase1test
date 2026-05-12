@@ -2,13 +2,14 @@
 
 DataSource（Supabase or JSON）から起動時にドキュメントをロードして
 ChromaDB に投入する。
+
+NOTE: chromadb / sentence_transformers / torch は起動時 import で
+Render Free（512MB）に厳しいため、初回呼び出し時に遅延 import する。
 """
 from __future__ import annotations
 
 from threading import Lock
-
-import chromadb
-from sentence_transformers import SentenceTransformer
+from typing import Any
 
 from src.adapters.interim.data_source import DataSource
 from src.domain.schemas import SearchHit
@@ -24,15 +25,19 @@ class ChromaDBAdapter:
         self._data_source = data_source
         self._collection_name = collection_name
         self._embedding_model_name = embedding_model
-        self._client: chromadb.ClientAPI | None = None
-        self._model: SentenceTransformer | None = None
-        self._collection: chromadb.Collection | None = None
+        self._client: Any = None
+        self._model: Any = None
+        self._collection: Any = None
         self._lock = Lock()
 
-    def _ensure_ready(self) -> tuple[chromadb.Collection, SentenceTransformer]:
+    def _ensure_ready(self) -> tuple[Any, Any]:
         with self._lock:
             if self._collection is not None and self._model is not None:
                 return self._collection, self._model
+
+            # 遅延 import：起動時 import を避けてメモリ／時間を節約。
+            import chromadb
+            from sentence_transformers import SentenceTransformer
 
             self._client = chromadb.Client()
             self._model = SentenceTransformer(self._embedding_model_name)

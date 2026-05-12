@@ -8,8 +8,6 @@ from __future__ import annotations
 import json
 from concurrent.futures import ThreadPoolExecutor
 
-from openai import OpenAI
-
 from src.domain.schemas import (
     AxisAnalysis,
     ContextBundle,
@@ -70,6 +68,9 @@ def _escape(text: str) -> str:
 
 class OpenAILLMAdapter:
     def __init__(self, api_key: str, model: str = "gpt-4o-mini") -> None:
+        # 遅延 import：起動時間とメモリを節約。
+        from openai import OpenAI
+
         self._client = OpenAI(api_key=api_key)
         self._model = model
 
