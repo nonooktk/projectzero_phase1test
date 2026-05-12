@@ -95,10 +95,14 @@ def get_llm() -> OpenAILLMAdapter:
 @lru_cache
 def get_vector_search() -> ChromaDBAdapter:
     s = get_settings()
+    # OpenAI Embeddings を使用するため OpenAI API キーを渡す。
+    # 旧 sentence-transformers の `all-MiniLM-L6-v2` は torch を引き、Render Free
+    # の 512MB に収まらないため除外。
     return ChromaDBAdapter(
         data_source=get_data_source(),
+        openai_api_key=s.openai_api_key,
         collection_name=s.chroma_collection_name,
-        embedding_model=s.embedding_model,
+        embedding_model="text-embedding-3-small",
     )
 
 

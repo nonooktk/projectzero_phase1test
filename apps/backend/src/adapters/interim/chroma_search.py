@@ -1,10 +1,10 @@
 """ChromaDB（インメモリ）による VectorSearchPort 実装。
 
 DataSource（Supabase or JSON）から起動時にドキュメントをロードして
-ChromaDB に投入する。
+ChromaDB に投入する。Embedding は OpenAI Embeddings（text-embedding-3-small）
+を使用し、torch / sentence-transformers の起動コストとメモリを排除する。
 
-NOTE: chromadb / sentence_transformers / torch は起動時 import で
-Render Free（512MB）に厳しいため、初回呼び出し時に遅延 import する。
+NOTE: chromadb 自体も大きいので初回呼び出し時に遅延 import する。
 """
 from __future__ import annotations
 
@@ -19,28 +19,34 @@ class ChromaDBAdapter:
     def __init__(
         self,
         data_source: DataSource,
+        openai_api_key: str,
         collection_name: str = "project_zero",
-        embedding_model: str = "all-MiniLM-L6-v2",
+        embedding_model: str = "text-embedding-3-small",
     ) -> None:
         self._data_source = data_source
         self._collection_name = collection_name
         self._embedding_model_name = embedding_model
+        self._openai_api_key = openai_api_key
         self._client: Any = None
-        self._model: Any = None
+        self._openai: Any = None
         self._collection: Any = None
         self._lock = Lock()
 
-    def _ensure_ready(self) -> tuple[Any, Any]:
+    def _embed(self, texts: list[str]) -> list[list[float]]:
+        # OpenAI Embeddings はバッチ呼び出し可能。トークン数制限に注意。
+        res = self._openai.embeddings.create(model=self._embedding_model_name, input=texts)
+        return [d.embedding for d in res.data]
+
+    def _ensure_ready(self) -> Any:
         with self._lock:
-            if self._collection is not None and self._model is not None:
-                return self._collection, self._model
+            if self._collection is not None:
+                return self._collection
 
-            # 遅延 import：起動時 import を避けてメモリ／時間を節約。
             import chromadb
-            from sentence_transformers import SentenceTransformer
+            from openai import OpenAI
 
+            self._openai = OpenAI(api_key=self._openai_api_key)
             self._client = chromadb.Client()
-            self._model = SentenceTransformer(self._embedding_model_name)
             self._collection = self._client.get_or_create_collection(
                 self._collection_name, metadata={"hnsw:space": "cosine"}
             )
@@ -50,7 +56,7 @@ class ChromaDBAdapter:
                 ids = [item["id"] for item in data]
                 texts = [item["content"] for item in data]
                 metas = [{"source": item["source"]} for item in data]
-                embs = self._model.encode(texts).tolist()
+                embs = self._embed(texts)
                 self._collection.add(
                     ids=ids, embeddings=embs, documents=texts, metadatas=metas
                 )
@@ -59,11 +65,11 @@ class ChromaDBAdapter:
                 f"(collection.count={self._collection.count()})",
                 flush=True,
             )
-            return self._collection, self._model
+            return self._collection
 
     def search(self, query: str, n: int = 5) -> list[SearchHit]:
-        collection, model = self._ensure_ready()
-        vec = model.encode(query).tolist()
+        collection = self._ensure_ready()
+        vec = self._embed([query])[0]
         raw = collection.query(query_embeddings=[vec], n_results=n)
 
         hits: list[SearchHit] = []
