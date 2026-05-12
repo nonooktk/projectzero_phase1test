@@ -28,6 +28,12 @@ app.include_router(analyses_router)
 app.include_router(graph_router)
 
 
+@app.get("/")
+async def root() -> dict[str, str]:
+    # Render のデフォルトヘルスチェック（`/`）にも応答できるよう用意。
+    return {"status": "ok", "service": "tech0-search-backend"}
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
