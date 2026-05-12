@@ -1,0 +1,35 @@
+# Render Blueprint（Render ダッシュボードから「New +」→「Blueprint」で指定）
+# 参考: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: tech0-search-backend
+    runtime: python
+    plan: free
+    rootDir: apps/backend
+    buildCommand: pip install --upgrade pip && pip install -e .
+    startCommand: uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.10"
+      - key: OPENAI_API_KEY
+        sync: false        # ダッシュボードから個別設定
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_DB_URL
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: chroma-snapshots
+      - key: CHROMA_COLLECTION_NAME
+        value: project_zero
+      - key: EMBEDDING_MODEL
+        value: all-MiniLM-L6-v2
+      - key: CORS_ORIGINS
+        sync: false        # Vercel の URL を後で設定

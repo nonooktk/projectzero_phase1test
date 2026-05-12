@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Web font は本来 next/font 推奨だが、F0 雛形なので CDN で簡素化 */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap");
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: #0a0e1a;
+  color: #e5ecff;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* HUD グリッド背景（48px ピッチ） */
+body {
+  background-image:
+    radial-gradient(circle at 50% 0%, rgba(0, 229, 255, 0.08), transparent 60%),
+    radial-gradient(circle at 90% 100%, rgba(255, 45, 149, 0.06), transparent 50%),
+    linear-gradient(rgba(31, 42, 68, 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(31, 42, 68, 0.4) 1px, transparent 1px);
+  background-size: auto, auto, 48px 48px, 48px 48px;
+  background-attachment: fixed;
+}
